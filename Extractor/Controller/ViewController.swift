@@ -50,13 +50,7 @@ class ViewController: UIViewController {
     NotificationCenter.default.addObserver(self, selector: #selector(ViewController.keyboardWillHide), name: UIResponder.keyboardWillHideNotification, object: nil)
     
     imageView.layer.addSublayer(frameSublayer)
-    
-    processor.process(in: imageView) { text, elements in
-      self.scannedText = text
-      elements.forEach() { feature in
-        self.frameSublayer.addSublayer(feature.shapeLayer)
-      }
-    }
+    drawFeatures(in: imageView)
   }
 	
   // MARK: Touch handling to dismiss keyboard
@@ -120,8 +114,33 @@ extension ViewController: UIImagePickerControllerDelegate, UINavigationControlle
   func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
     if let pickedImage = info[UIImagePickerController.InfoKey.originalImage] as? UIImage {
       imageView.contentMode = .scaleAspectFit
-      imageView.image = pickedImage
+      let fixedImage = pickedImage.fixOrientation()
+      imageView.image = fixedImage
+      drawFeatures(in: imageView)
     }
     dismiss(animated: true, completion: nil)
   }
+    
+    private func removeFrames() {
+      guard let sublayers = frameSublayer.sublayers else { return }
+      for sublayer in sublayers {
+        sublayer.removeFromSuperlayer()
+      }
+    }
+    
+    private func drawFeatures(
+      in imageView: UIImageView,
+      completion: (() -> Void)? = nil
+      ) {
+      // 2
+      removeFrames()
+      processor.process(in: imageView) { text, elements in
+        elements.forEach() { element in
+          self.frameSublayer.addSublayer(element.shapeLayer)
+        }
+        self.scannedText = text
+        // 3
+        completion?()
+      }
+    }
 }
